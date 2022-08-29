@@ -318,7 +318,7 @@ UNION
 SELECT *
 FROM mo03_filter
 INNER JOIN diff_generator ON mo03_filter.ParticID = diff_generator.[Study ID]
-WHERE ([difference] BETWEEN 60 AND 135) AND VisitInQuProprietaryQuestionnaireestion = 'mos3'
+WHERE ([difference] BETWEEN 60 AND 135) AND VisitInQuestion = 'mos3'
 UNION
 SELECT *
 FROM mo06_filter
@@ -333,7 +333,7 @@ WHERE ([difference] BETWEEN 267 AND 442) AND VisitInQuestion = 'mos12'),
 /* Fetch data captured at the time closest to ideal follow-up. */
 
 lts_opt_diff AS
-(SELECT ids_in_question.[Study ID], ids_in_question.[VisitInQuestion], ids_in_question.[difference], ids_in_question.[LT Symptoms Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].*,
+(SELECT ids_in_question.[Study ID], ids_in_question.[VisitInQuestion], ids_in_question.[difference], ids_in_question.[ProprietaryQuestionnaire Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].*,
 CASE WHEN VisitInQuestion = 'mos1' THEN 30
 WHEN VisitInQuestion = 'mos3' THEN 90
 WHEN VisitInQuestion = 'mos6' THEN 180
@@ -341,7 +341,7 @@ WHEN VisitInQuestion = 'mos12' THEN 365
 END AS optimal_diff
 FROM ids_in_question
 INNER JOIN [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire] ON ids_in_question.[Study ID] = [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].[ProprietaryID]
-WHERE (DATEDIFF(day, ids_in_question.[LT Symptoms Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].[start]) = 0)
+WHERE (DATEDIFF(day, ids_in_question.[ProprietaryQuestionnaire Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].[start]) = 0)
 AND questionnaire_complete = 2),
 
 lts_act_diff AS
