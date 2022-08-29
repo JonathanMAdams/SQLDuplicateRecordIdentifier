@@ -1,4 +1,4 @@
-/* Import IDs in Question from Aaron's CSV file. 
+/* Import IDs in Question from [redacted]'s CSV file. 
 Create temporary table. */
 
 DECLARE @IDsInQuestion TABLE (ProprietaryID varchar(20), VisitInQuestion varchar(20))
