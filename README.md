@@ -60,5 +60,57 @@ GROUP BY [Study ID]
 HAVING COUNT(*) > 1),
 ```
 
-I repeated this process for the Month 3, Month 6, and Month 12 windows, adjusting the ```BETWEEN x AND y```, ```VisitInQuestion```, and CTE names accordingly. 
+I repeated this process for the Month 3, Month 6, and Month 12 windows, adjusting ```BETWEEN x AND y```, ```VisitInQuestion```, and the CTE names accordingly. 
 
+### Picking Out Problem Participants
+
+To select all IDs associated with problematic entries at all time points, I created the CTE ```ids_in_question```, which united all IDs and the number of visits they had per time point into a single query, given that the number of visits per time point was greater than one. 
+
+```
+ids_in_question AS
+(SELECT *
+FROM mo01_filter
+INNER JOIN diff_generator ON mo01_filter.ParticID = diff_generator.[Study ID]
+WHERE ([difference] BETWEEN 28 AND 59) AND VisitInQuestion = 'mos1'
+UNION
+SELECT *
+FROM mo03_filter
+INNER JOIN diff_generator ON mo03_filter.ParticID = diff_generator.[Study ID]
+WHERE ([difference] BETWEEN 60 AND 135) AND VisitInQuProprietaryQuestionnaireestion = 'mos3'
+UNION
+SELECT *
+FROM mo06_filter
+INNER JOIN diff_generator ON mo06_filter.ParticID = diff_generator.[Study ID]
+WHERE ([difference] BETWEEN 136 AND 266) AND VisitInQuestion = 'mos6'
+UNION
+SELECT *
+FROM mo12_filter
+INNER JOIN diff_generator ON mo12_filter.ParticID = diff_generator.[Study ID]
+WHERE ([difference] BETWEEN 267 AND 442) AND VisitInQuestion = 'mos12'),
+```
+
+### A Deeper Dive
+
+After I identified the problematic records (we really shouldn't blame our poor participants for dirty data!), I wanted to look at each record's item-level data. To do so, I joined my table of participants and time points with problematic records with my survey data. 
+
+This CTE also contains a few other features. First, I created a new column, ```optimal_diff```, using a ```CASE WHEN``` series, that sets an "ideal" time expressed in days for when each record should be captured. Second, I matched the dates I had associated with suspect visits to dates when this survey was recorded by asking for ```DATEDIFF```'s between those two dates of 0. I had to do this because I referenced a different summary table when creating the ``m0**_filter``` CTEs above. Finally, I required data to be complete by setting ```questionnaire_complete = 2```.
+
+```
+lts_opt_diff AS
+(SELECT ids_in_question.[Study ID], ids_in_question.[VisitInQuestion], ids_in_question.[difference], ids_in_question.[Proprietary Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].*,
+CASE WHEN VisitInQuestion = 'mos1' THEN 30
+WHEN VisitInQuestion = 'mos3' THEN 90
+WHEN VisitInQuestion = 'mos6' THEN 180
+WHEN VisitInQuestion = 'mos12' THEN 365
+END AS optimal_diff
+FROM ids_in_question
+INNER JOIN [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire] ON ids_in_question.[Study ID] = [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].[ProprietaryID]
+WHERE (DATEDIFF(day, ids_in_question.[Proprietary Survey Dates], [ProprietaryDataSet_Partic].[REDCap].[ProprietaryQuestionnaire].[start]) = 0)
+AND questionnaire_complete = 2),
+```
+
+### Determining the Best Records
+
+It's finally time to determine the records we should use. This required two steps. First, I had to calcuate the absolute distance (```actual_diff```) between the optimal difference between baseline and the date of record collection (```optimal_diff```) and the actual difference between those two time points. More simply put, the absolute distance would be a measure of how far we were from when we should have collected the data. 
+
+Because there were multiple records per time point--that is why I am writing this query, after all!--I took the minimum absolute difference 
