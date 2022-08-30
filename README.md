@@ -111,6 +111,61 @@ AND questionnaire_complete = 2),
 
 ### Determining the Best Records
 
-It's finally time to determine the records we should use. This required two steps. First, I had to calcuate the absolute distance (```actual_diff```) between the optimal difference between baseline and the date of record collection (```optimal_diff```) and the actual difference between those two time points. More simply put, the absolute distance would be a measure of how far we were from when we should have collected the data. 
+It's finally time to determine the records we should use. This required two steps. First, I had to calcuate the absolute distance (```actual_diff```) between the optimal difference between baseline and the date of record collection (```optimal_diff```) and the actual difference between those two time points. More simply put, a record's absolute distance was the discrepancy between when the data were collected versus when they should have been collected.
 
-Because there were multiple records per time point--that is why I am writing this query, after all!--I took the minimum absolute difference 
+Because there were multiple records per time point--that is why I am writing this query, after all!--I took the minimum absolute difference for each participant.
+
+```
+lts_act_diff AS
+(SELECT *, ABS(optimal_diff - [difference]) AS actual_diff
+FROM lts_opt_diff),
+
+lts_ideal_diff AS
+(SELECT *, 
+MIN(actual_diff) OVER (PARTITION BY [Study ID]) AS ideal_diff
+FROM lts_act_diff),
+```
+
+So here it is: the table of IDs and data that the analyst should use! 
+
+To recap, my procedure for selecting these records was as follows:
+
+1. Calculate the difference between the time each record was collected and the baseline.
+2. Determine the number of participants with more than one record per time point.
+3. Figure out the discrepancy between the date each record was collected and when it should have been collected.
+4. Ensure records were valid (i.e., records did not consist of missing data).
+5. Select the records with the lowest discrepancy.
+
+### Epilogue: The Mystery Cases
+
+You might have noticed that my last code chunk was still a CTE. Why? It's because, unfortunately, we still have duplicate, non-distinct records that were captured on the same day. In other words, these records aren't the same, and there's no way of determine which ones are more valid. 
+
+To fetch these cases, I wrote the following addendum to my query:
+
+```
+lts_ideal_tps AS 
+(SELECT DISTINCT *
+FROM lts_ideal_diff
+WHERE ideal_diff = actual_diff),
+
+visits_in_question AS
+(SELECT [Study ID], COUNT(*) AS entries
+FROM lts_ideal_tps
+GROUP BY [Study ID]
+HAVING COUNT(*) > 1)
+
+SELECT DISTINCT visits_in_question.[Study ID], entries, lts_ideal_diff.VisitInQuestion
+FROM visits_in_question
+LEFT JOIN lts_ideal_diff ON visits_in_question.[Study ID] = lts_ideal_diff.[Study ID]
+```
+
+In short, this segment of code (1) selects the cases with the minimum distance between the ideal date and the date of capture; (2) gathers participants who have multiple records with equivalent minimum distances calcuated in (1); and (3) gathers those participants into a table, along with the suspect timeframes, so that someone can perform a manual analysis on these 15 "mystery" cases. 
+
+## Concluding Remarks
+Cleaning data is a burdensome yet necessary task. Using queries and other algorithms to identify and remove suspect cases can save research assistants valuable time. Now, instead of having to provide quality control on >200 cases, our research assistants will only need to investigate the records of 15 participants at specified time points. En masse, these procedures can save organizations hours of labor and hasten production of output. In addition, this method can be used to identify which staff members or departments make the most data collection errors. By identifying these individuals or departments, we can provide additional training, reducing participant burden and expenditures for unnecessary study visits.
+
+When developing mechanisms for cleaning data, it's important to critically think about what defines a "suspect case." The query above assumed that cases with valid (i.e., non-missing) data captured closest to the ideal time of collection indeed contained the best data. It's possible this assumption was erroneous, and there were valid reasons for recapturing data at a later date. However, this is unlikely, as recaptures would only make sense if data were missing due to technical or other error (e.g., computer failure).
+
+Thanks for reading!
+JMA
+08/29/2022
