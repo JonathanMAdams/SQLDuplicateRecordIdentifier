@@ -165,7 +165,3 @@ In short, this segment of code (1) selects the cases with the minimum distance b
 Cleaning data is a burdensome yet necessary task. Using queries and other algorithms to identify and remove suspect cases can save research assistants valuable time. Now, instead of having to provide quality control on >200 cases, our research assistants will only need to investigate the records of 15 participants at specified time points. En masse, these procedures can save organizations hours of labor and hasten production of output. In addition, this method can be used to identify which staff members or departments make the most data collection errors. By identifying these individuals or departments, we can provide additional training, reducing participant burden and expenditures for unnecessary study visits.
 
 When developing mechanisms for cleaning data, it's important to critically think about what defines a "suspect case." The query above assumed that cases with valid (i.e., non-missing) data captured closest to the ideal time of collection indeed contained the best data. It's possible this assumption was erroneous, and there were valid reasons for recapturing data at a later date. However, this is unlikely, as recaptures would only make sense if data were missing due to technical or other error (e.g., computer failure).
-
-Thanks for reading!
-JMA
-08/29/2022
