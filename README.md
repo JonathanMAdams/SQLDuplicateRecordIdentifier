@@ -28,7 +28,7 @@ VALUES('redacted','mos1'),
 
 ### Computing Durations
 
-In order to determine when data should have been captured, I needed to determine the ```difference``` between the date when baseline data were captured and when each record was captured. However, data were in long format, thus the ```Baseline Module 1 Dates``` column was ```NULL``` in all but the first row for each participant. The following query calcuates the difference between the capture of each record (i.e., row) from the baseline grouped by participant using a ```DATEDIFF``` and window function.
+In order to determine when data should have been captured, I first needed to determine the ```difference``` between the date when baseline data were captured and when each record was captured. However, data were in long format, thus the ```Baseline Module 1 Dates``` column was ```NULL``` in all but the first row for each participant. The following query calcuates the difference between the capture of each record (i.e., row) from the baseline grouped by participant using a ```DATEDIFF``` and window function.
 
 ```
 WITH diff_generator AS (SELECT DISTINCT *,
@@ -38,3 +38,27 @@ FROM ProprietaryDataSet_Partic.[REDCap].[Surveys_DAG]
 INNER JOIN @IDsInQuestion
 ON [Surveys_DAG].[Study ID] = [@IDsInQuestion].ProprietaryID),
 ```
+
+### Creating Filters for Dates
+
+After calcuating the number of days between the baseline and each follow-up visit for every participant, I then needed to determine how many participants had more than one record within a span of time. A bit of context may be necessary here: our project provides a certain "grace period" for data collection. For example, it's okay if a participant's one-month follow-up doesn't take place exactly 30 days after their baseline visit. These grace periods, or windows, are defined as follows:
+
+| Timepoint | Windows |
+| --- | --- |
+| Month 1 | 28 to 59 days |
+| Month 3 | 60 to 135 days |
+| Month 6 | 136 to 266 days |
+| Month 12 | 267 to 442 days |
+
+The following query, expressed as a CTE, provides the IDs of participants who had more than one recorded visit during the Month 1 study window, as well as how many visits (```occurrences```) they had during the Month 1 window:
+
+```
+WITH mo01_filter AS (SELECT [Study ID] AS ParticID, COUNT([Study ID]) as occurrences
+FROM diff_generator
+WHERE ([difference] BETWEEN 28 AND 59) AND VisitInQuestion = 'mos1'
+GROUP BY [Study ID]
+HAVING COUNT(*) > 1),
+```
+
+I repeated this process for the Month 3, Month 6, and Month 12 windows, adjusting the ```BETWEEN x AND y```, ```VisitInQuestion```, and CTE names accordingly. 
+
